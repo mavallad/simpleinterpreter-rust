@@ -1,4 +1,5 @@
 use std::str::Chars;
+use std::iter::Peekable;
 
 #[derive(Debug)]
 enum Token {
@@ -8,12 +9,12 @@ enum Token {
 }
 
 struct Interpreter<'a> {
-    chars: Chars<'a>
+    chars: Peekable<Chars<'a>>
 }
 
 impl <'a> Interpreter<'a> {
     fn new(text: &'a str) -> Interpreter<'a> {
-        Interpreter { chars: text.chars() }
+        Interpreter { chars: text.chars().peekable() }
     }
 
     fn get_next_token(&mut self) -> Result<Token, String> {
@@ -22,7 +23,22 @@ impl <'a> Interpreter<'a> {
             Some('+') => Ok(Token::Plus),
             Some(c) =>
                 match c.to_digit(10) {
-                    Some(d) => Ok(Token::Integer(d)),
+                    Some(d) => {
+                        let mut val = d;
+                        let mut still_integer = true;
+                        while still_integer {
+                            match self.chars.peek() {
+                                Some(n) if n.is_digit(10) => {
+                                    if let Some(v) = n.to_digit(10) {
+                                        self.chars.next();
+                                        val = val * 10 + v;
+                                    }
+                                },
+                                _ => still_integer = false
+                            }
+                        }
+                        Ok(Token::Integer(val))
+                    },
                     None => Err("Invalid token".to_string())
                 }
         }
@@ -68,7 +84,7 @@ impl <'a> Interpreter<'a> {
 }
 
 fn main() -> Result<(), String> {
-    let mut inter = Interpreter::new("4+5");
+    let mut inter = Interpreter::new("10+56");
     // let t1 = inter.get_next_token()?;
     // println!("{:?}", t1);
     // let t2 = inter.get_next_token()?;
